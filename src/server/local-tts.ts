@@ -24,7 +24,7 @@ export const localTtsStatus = () => model.status();
 const VOICE = 3;
 
 export type SpokenAudio = { samples: Float32Array; sampleRate: number };
-type Tts = { generateAsync(request: { text: string; sid: number; speed: number }): Promise<SpokenAudio> };
+type Tts = { generateAsync(request: { text: string; sid: number; speed: number; enableExternalBuffer: boolean }): Promise<SpokenAudio> };
 
 let tts: Tts | null = null;
 /** One sentence at a time: parallel runs would only fight over the same cores. */
@@ -54,7 +54,9 @@ async function loadVoice(): Promise<Tts> {
 export function synthesize(text: string, speed: number): Promise<SpokenAudio> {
 	const run = queue.then(async () => {
 		tts ??= await loadVoice();
-		return tts.generateAsync({ text, sid: VOICE, speed });
+		// Electron's Node forbids external ArrayBuffers, which is how the library
+		// returns audio by default ("TTS settlement failed" in the packaged app).
+		return tts.generateAsync({ text, sid: VOICE, speed, enableExternalBuffer: false });
 	});
 	queue = run.catch(() => {});
 	return run;
