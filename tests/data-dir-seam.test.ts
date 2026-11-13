@@ -37,7 +37,16 @@ describe("LH_DATA_DIR seam", () => {
 		}
 	});
 
-	it("unset = the repo data/ exactly as before (fresh child process, no env)", () => {
+	it("outside tests, unset = the desktop app's own data folder on each OS (fork)", async () => {
+		const { sharedDataRoot } = await import("../config.ts");
+		assert.equal(sharedDataRoot("win32", { APPDATA: "D:\\Roaming" }, "C:\\Users\\c"), "D:\\Roaming\\LearnHarness\\data");
+		assert.equal(sharedDataRoot("win32", {}, "C:\\Users\\c"), "C:\\Users\\c\\AppData\\Roaming\\LearnHarness\\data");
+		assert.equal(sharedDataRoot("darwin", {}, "/Users/c"), "/Users/c/Library/Application Support/LearnHarness/data");
+		assert.equal(sharedDataRoot("linux", {}, "/home/c"), "/home/c/.config/LearnHarness/data");
+		assert.equal(sharedDataRoot("linux", { XDG_CONFIG_HOME: "/x" }, "/home/c"), "/x/LearnHarness/data");
+	});
+
+	it("under tests, unset = the repo data/ (fresh child process, inherited NODE_ENV=test)", () => {
 		const out = execFileSync(
 			process.execPath,
 			["--import", TSX_LOADER, "--eval", `const m = await import(${JSON.stringify(path.join(REPO_ROOT, "config.ts"))}); console.log(JSON.stringify({ data: m.PATHS.data, chats: m.PATHS.chats }));`],
