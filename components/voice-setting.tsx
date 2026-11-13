@@ -23,7 +23,7 @@ export function VoiceSetting() {
 	const label = voice ? speedLabel(voice.speed) : "—";
 
 	return <>
-		<SettingsRow label="Speak replies aloud" hint="The teacher's replies are read aloud." testid="row-voice-speak">
+		<SettingsRow label="Speak replies aloud" hint="The teacher's replies are read aloud and written to be heard." testid="row-voice-speak">
 			<Toggle
 				label="Speak replies aloud"
 				checked={voice?.speakReplies ?? false}

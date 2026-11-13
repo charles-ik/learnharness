@@ -33,7 +33,7 @@ test("the Voice rows save the whole section; speed stays usable while replies ar
 	const root = createRoot(host);
 	await act(async () => { root.render(<InteractionLayersProvider><VoiceSetting /></InteractionLayersProvider>); });
 
-	assert.match(byTest("row-voice-speak").textContent ?? "", /Speak replies aloud.*The teacher's replies are read aloud\./);
+	assert.match(byTest("row-voice-speak").textContent ?? "", /Speak replies aloud.*The teacher's replies are read aloud and written to be heard./);
 	const toggle = byTest("toggle-speak-replies-aloud");
 	assert.equal(toggle.getAttribute("aria-checked"), "false");
 	assert.equal(byTest("voice-speed").textContent, "1.2×▾");

@@ -41,6 +41,8 @@ Audio streams from your browser directly to Deepgram using a short-lived token. 
 
 Every teacher message has a speaker button that reads it aloud; press it again to stop. Turn on **Speak replies aloud** in Settings to have each finished reply read automatically, and set **Speaking speed** there. Starting dictation or sending a message silences the voice.
 
+With **Speak replies aloud** on, the teacher also writes for the ear: connected sentences in place of headings and bullets, one idea per message, maths said in words, and code and diagrams left on screen and referred to. The change applies from the next reply.
+
 The voice is Kokoro, run on this machine's CPU. The first use downloads it once (about 380 MB) into `<learning data>/models/`; the button's tooltip shows the progress. Only the prose is spoken: code, diagrams, tables, displayed formulas and question cards stay on screen. Replies are read after they finish, not while they stream.
 
 ## Use local files in a session

@@ -24,6 +24,7 @@ import { PATHS } from "../../config.ts";
 import type { SideModelTurn } from "../core/side-chat.ts";
 import type { PiEngine } from "./models.ts";
 import { readPromptOverride } from "./prompt-segments.ts";
+import { SPOKEN_REPLIES_RULE } from "./spoken-replies.ts";
 
 const PROMPTS_DIR = path.join(PATHS.root, "src", "agent", "prompts");
 const SIDE_BASE = path.join(PROMPTS_DIR, "side-chat", "00-base.md");
@@ -41,13 +42,14 @@ function readSource(file: string): string {
 
 /** The side model's system prompt, composed fresh per call (an override
  *  switched on between questions lands on the next one). */
-export function composeSideChatInstructions(switches: Record<string, boolean> = {}): string {
+export function composeSideChatInstructions(switches: Record<string, boolean> = {}, spokenReplies = false): string {
 	const segments = [readSource(SIDE_BASE)];
 	for (const key of SIDE_SHARED_FRAGMENTS) {
 		const override = switches[key] === true ? readPromptOverride(key) : null;
 		segments.push(override ?? readSource(path.join(PROMPTS_DIR, ...key.split("/"))));
 	}
 	segments.push(readSource(SIDE_STYLE));
+	if (spokenReplies) segments.push(SPOKEN_REPLIES_RULE);
 	return segments
 		.map((s) => s.trim())
 		.filter(Boolean)
