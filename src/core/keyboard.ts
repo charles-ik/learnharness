@@ -34,6 +34,8 @@ export type KeyAction =
 	| "question-next-row"
 	| "question-prev-row"
 	| "question-pick-row"
+	| "question-pick-number"
+	| "dictation-space"
 	| "question-submit"
 	| "open-settings"
 	| "toggle-user-thinking"
@@ -57,6 +59,9 @@ export interface KeyActionDef {
 
 export const KEYBOARD_ACTIONS: readonly KeyActionDef[] = [
 	{ id: "toggle-dictation", label: "Toggle dictation", scope: "global", binding: "mod+d" },
+	// Bare Space (fork): a second, fixed way to the same toggle. displayOnly
+	// because the dispatcher decides when Space is free (isDictationSpace).
+	{ id: "dictation-space", label: "Toggle dictation · outside text fields", scope: "global", binding: "space", displayOnly: true },
 	{ id: "open-settings", label: "Open settings", scope: "global", binding: "mod+," },
 	{ id: "open-model-picker", label: "Model selector", scope: "global", binding: "mod+k" },
 	{ id: "cycle-thinking", label: "Cycle thinking level", scope: "global", binding: "shift+tab" },
@@ -85,7 +90,8 @@ export const KEYBOARD_ACTIONS: readonly KeyActionDef[] = [
 	// arrow machine (menu-shell.tsx) is unchanged.)
 	{ id: "question-next-row", label: "Question · next row", scope: "chat", binding: "arrowdown", displayOnly: true },
 	{ id: "question-prev-row", label: "Question · previous row", scope: "chat", binding: "arrowup", displayOnly: true },
-	{ id: "question-pick-row", label: "Question · pick row", scope: "chat", binding: "space", displayOnly: true },
+	{ id: "question-pick-row", label: "Question · pick walked row", scope: "chat", binding: "space", displayOnly: true },
+	{ id: "question-pick-number", label: "Question · pick row by number", scope: "chat", binding: "1-9", displayOnly: true },
 	{ id: "question-submit", label: "Question · submit", scope: "chat", binding: "enter", displayOnly: true },
 ];
 
@@ -204,6 +210,20 @@ export function isTypingSurface(e: KeyboardEvent): boolean {
 	const tag = target.tagName;
 	if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
 	return target.isContentEditable;
+}
+
+/** Controls that Space activates natively. */
+const SPACE_ACTIVATED = "button, a[href], summary, [role='button'], [role='checkbox'], [role='radio'], [role='switch'], [role='option'], [role='menuitem'], [role='tab'], [role='slider']";
+
+/** Bare Space toggles dictation (fork) wherever Space has no other job: not
+ *  in a typing surface, not held down, and not on a control Space activates.
+ *  A question's answer rows are the exception: picking them is the number
+ *  keys' job, and Space right after an arrow walk is claimed by the dock
+ *  before this is asked. */
+export function isDictationSpace(e: KeyboardEvent): boolean {
+	if (e.key !== " " || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey || e.repeat || isTypingSurface(e)) return false;
+	const control = (e.target as HTMLElement | null)?.closest?.(SPACE_ACTIVATED);
+	return !control || control.hasAttribute("data-kbdrow");
 }
 
 /** macOS styling for binding display ("⌘D", "⇧⇥", "⌥↑"). */

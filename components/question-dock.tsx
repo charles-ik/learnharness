@@ -489,6 +489,9 @@ function QuestionDockForm({
 	   The listener is document-level and lives only while the dock is
 	   expanded — collapsed, the bar's native Enter expands it. */
 	const [kbdIdx, setKbdIdx] = useState<number | null>(null);
+	/** The last key was an arrow walk: only then is Space the row's pick.
+	 *  Otherwise Space is the dictation toggle (fork). */
+	const walkedRef = useRef(false);
 	const otherInputRef = useRef<HTMLDivElement>(null);
 	const thinkingRef = useRef<HTMLDivElement>(null);
 	// One row past the options is the trailing row: quiz → don't-know,
@@ -565,6 +568,17 @@ function QuestionDockForm({
 			// Keys from a typing surface keep their meaning (arrows move
 			// the caret, space types).
 			if (typing || modded) return;
+			const walked = walkedRef.current;
+			walkedRef.current = e.key === "ArrowDown" || e.key === "ArrowUp";
+			// Number keys pick a row outright (fork): 1 is the first option, and
+			// the number after the last option is "I don't know" / "Other".
+			if (/^[1-9]$/.test(e.key) && Number(e.key) <= rowCount) {
+				e.preventDefault();
+				const idx = Number(e.key) - 1;
+				setKbdIdx(idx);
+				kbdAct(idx);
+				return;
+			}
 			if (e.key === "ArrowDown") {
 				e.preventDefault();
 				const next = Math.min((kbdIdx ?? -1) + 1, rowCount - 1);
@@ -591,7 +605,7 @@ function QuestionDockForm({
 					),
 				);
 			} else if (e.key === " ") {
-				if (kbdIdx === null) return; // plain Space keeps scrolling the page
+				if (kbdIdx === null || !walked) return; // plain Space toggles dictation
 				e.preventDefault();
 				kbdAct(kbdIdx);
 			} else if (e.key === "Enter") {

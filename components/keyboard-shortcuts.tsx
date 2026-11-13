@@ -31,6 +31,7 @@ import {
 	bindingForAction,
 	eventBinding,
 	formatBinding,
+	isDictationSpace,
 	isTypingSurface,
 	kbdEventForAction,
 	KEYBOARD_ACTIONS,
@@ -111,6 +112,18 @@ export function KeyboardShortcuts() {
 
 			// ── Registry dispatch. Leaf editors/rebinding keep their claims.
 			if (e.defaultPrevented) return;
+			// Bare Space is dictation's second key (fork). Same routing as the
+			// registry's toggle-dictation below: a focused plugin first, and
+			// never under a modal.
+			if (isDictationSpace(e)) {
+				if (dispatchFocusedPluginShortcut("toggle-dictation", controller)) { e.preventDefault(); return; }
+				if (!isInteractionScopeEligible(document.body, controller)) return;
+				e.preventDefault(); // Space would scroll the page
+				// Leave a focused answer row, or its keyup would also click it.
+				(e.target as HTMLElement | null)?.closest?.<HTMLElement>("[data-kbdrow]")?.blur();
+				window.dispatchEvent(new CustomEvent(kbdEventForAction("toggle-dictation")));
+				return;
+			}
 			const action = actionForBinding(eventBinding(e));
 			if (!action) { dispatchPluginActionShortcut(e, manager, controller); return; }
 
