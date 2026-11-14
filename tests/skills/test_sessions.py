@@ -337,11 +337,27 @@ class SessionsTest(unittest.TestCase):
         self.assertNotIn("<script>", self.render(source))
         self.assertIn("&lt;script&gt;", self.render(source))
 
+    def test_format_2_side_conversations_are_learner_evidence(self):
+        thread = {"id": "t1", "open": False, "createdAt": "2026-11-06T10:00:00Z",
+                  "anchor": {"messageId": "teacher", "partId": "teacher-t0", "blockIndex": 2, "blockText": "Servers expose tools."},
+                  "contextSnapshot": [],
+                  "messages": [{"id": "q1", "role": "user", "text": "Why not just hard-code the tools?", "at": "2026-11-06T10:01:00Z", "quotes": ["expose tools"]},
+                               {"id": "a1", "role": "assistant", "text": "Because the server", "at": "2026-11-06T10:01:05Z", "stopped": True}]}
+        source = record([marker("side-question", "Recorded learner-helper conversation update", {"threadId": "t1", "updates": []})],
+                        version=2, sideChats=[thread])
+        text = self.render(source)
+        for value in ("## Side conversations", "> Servers expose tools.", "**Learner**", "Why not just hard-code the tools?",
+                      "> expose tools", "**Helper**", "STOPPED by learner", "frozen after 0 message(s)", "Side conversation update"):
+            self.assertIn(value, text)
+        self.assertNotIn("## Stored session context", text)
+        self.assertNotIn("unsupported/unrendered marker", text)
+        self.assertEqual(sessions.selected_record(source)["record"]["sideChats"], [thread])
+
     def test_cli_errors_isolated_list_and_missing_defaults(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             self.save(root, record())
-            self.save(root, record(session_id="future", version=2))
+            self.save(root, record(session_id="future", version=3))
             self.save(root, record(session_id="old", messages=[{"role": "assistant", "parts": []}]))
             (root / "chats" / "broken.json").write_text("{bad", encoding="utf-8")
             before = snapshot(root)

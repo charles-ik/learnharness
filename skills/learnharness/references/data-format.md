@@ -2,8 +2,9 @@
 
 The files are the user's record, not an import format to rewrite. Work read-only.
 The bundled readers make common views convenient; they are not required for custom
-analysis. This reference describes native session/graph format **1**. An absent
-version stamp means v1. Older fields within that format are described below;
+analysis. This reference describes native session formats **1** and **2** and
+graph format **1**. An absent version stamp means v1. Format 2 changed only side
+conversations (`sideChats` and the `side-question` marker); messages are unchanged. Older fields within that format are described below;
 pre-native `parts`/UIMessage transcripts are a different, unsupported dialect.
 
 ## File map
@@ -42,11 +43,34 @@ Each `chats/*.json` file is an object with:
 | `tree` | Optional session plan: nodes, prerequisite edges, revision number |
 | `turns`, `extractions` | Parallel usage/cost-observation logs, not learner answers |
 | `settings` | Per-session model/thinking overrides, not an understanding assessment |
+| `sideChats` | Format 2: side conversations, see below |
 
 The plan is session scaffolding, not the persistent knowledge graph. Its visited
 or current positions are not proof of mastery. Context compaction changes what the
 teaching model sees; it does **not** mean earlier messages were deleted from this
 stored history.
+
+### Side conversations (format 2)
+
+`sideChats` is an array of threads. While reading, the learner can ask a helper
+about one teacher passage without interrupting the lesson. Each thread has:
+
+| Field | Meaning |
+| --- | --- |
+| `id`, `createdAt`, `open` | Thread identity, start time, and whether the companion window was open |
+| `anchor` | `messageId` of the teacher message, plus `blockText`: the quoted passage |
+| `messages` | `{id, role: user\|assistant, text, at}`; `user` is the **learner's own question** (with optional `quotes`), `assistant` is the helper's model-authored reply |
+| `contextSnapshot` | Teacher-context cutoff: absent = still open, `[]` = frozen before any exchange; later lines were never seen by the teacher |
+
+Reply flags: `pending` (still generating when saved), `stopped` (learner stopped it;
+text is partial), `error` (failed; text is whatever arrived). The helper is not the
+teacher. Learner questions here are good evidence of confusion and curiosity.
+
+The threads are the current saved state. What actually reached the teacher is in
+the transcript as `side-question` markers, written at each main request: `content`
+is the readable update and `details: {threadId, updates}` holds only the new text
+(`append: true` means it extends the earlier reply). Older records may carry
+`details.snapshot` instead, or a legacy `side-question-told` marker.
 
 ### Messages and content blocks
 
@@ -144,6 +168,9 @@ recall/explain response: the teacher's subsequent prose is its interpretation.
 | `practice-next` | Learner moved on to another problem |
 | `problem-dismissed` | Learner skipped a practice problem; points to its problem call |
 | `compaction` | Context-management bookkeeping, not a learner statement or replacement for history |
+| `side-question` | Format 2: a side-conversation update delivered to the teacher (see Side conversations) |
+| `side-question-told` | Legacy side-question delivery marker |
+| `plugin-problem-submission` | **Learner submission** to a plugin-defined practice problem; envelope in `details` |
 
 The practice `problem` tool holds the statement, target proposition IDs, and
 precommitted `modelSolution`. There may be many `practice-thinking` submissions for

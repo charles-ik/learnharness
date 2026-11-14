@@ -153,8 +153,10 @@ graph provenance `chatId` with `sessions.py read`; `messageId` locates the exact
 stored message when nonempty. Imported notes can have a `src_…` ID and no message
 anchor; their file paths are references, not permission to open arbitrary files.
 
-These readers support native session/graph format 1; an absent stamp is treated
-as v1. Newer formats are refused rather than guessed or migrated. Invalid records
+These readers support native session formats 1 and 2 and graph format 1; an
+absent stamp is treated as v1. Format 2 adds side conversations: the learner's
+questions asked beside the lesson, which the session reader shows in their own
+section. Newer formats are refused rather than guessed or migrated. Invalid records
 produce explicit errors or warnings, not an apparently complete empty history.
 Files may change while the app runs: output is a read, not a cross-file atomic
 snapshot. Re-read, or ask the user to close the app when a stable snapshot matters.
