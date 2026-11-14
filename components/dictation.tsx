@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { stopSpeaking } from "./speak";
 import { Loader2Icon, MicIcon } from "lucide-react";
 import { useSettingsDialog } from "@/components/settings/settings-dialog";
 import { Hint } from "@/components/ui/hint";
@@ -158,6 +159,36 @@ async function mintFreshToken(): Promise<string> {
 		throw new Error(data.message ?? `token route ${res.status}`);
 	}
 	return data.token;
+}
+
+/* Local engine (fork, 2026-11-13): with no Deepgram key the run records
+ * into the pending queue and is transcribed on this machine at stop
+ * (/api/stt/local, Parakeet). Same deferred contract as Deepgram: the
+ * transcript reaches the input once, at teardown. */
+/** Ten minutes of 128 ms frames; older audio drops, as in the socket queue. */
+const LOCAL_MAX_FRAMES = 4680;
+
+/** Resolves when the on-device model is ready; the first call starts its
+ *  one-time download and rejects with the progress line. */
+async function localEngineReady(): Promise<void> {
+	const res = await fetch("/api/stt/local");
+	const status = (await res.json()) as { state?: string; progress?: number; message?: string };
+	if (status.state === "ready") return;
+	if (status.state === "downloading") {
+		throw new Error(`Downloading speech model (${Math.round((status.progress ?? 0) * 100)}%). Try again shortly`);
+	}
+	throw new Error(status.message ?? "Local dictation is unavailable");
+}
+
+async function transcribeLocally(frames: ArrayBuffer[]): Promise<string> {
+	const res = await fetch("/api/stt/local", {
+		method: "POST",
+		headers: { "Content-Type": "application/octet-stream" },
+		body: new Blob(frames),
+	});
+	const data = (await res.json()) as { text?: string; message?: string };
+	if (!res.ok) throw new Error(data.message ?? `Local dictation failed (${res.status})`);
+	return data.text ?? "";
 }
 
 /** Warm-token cache (mitigation D, owner 2026-09-27): the click path takes
@@ -383,6 +414,8 @@ export function useDictation({ append, destination = "primary", disabled = false
 	 *  order on open; capped at 256 frames (≈32s) with the oldest dropped;
 	 *  cleared at teardown so a dead run's audio can't leak into the next. */
 	const pendingRef = useRef<ArrayBuffer[]>([]);
+	/** This run uses the local engine: the queue IS the recording (fork). */
+	const localRef = useRef(false);
 	const genRef = useRef(0); // stale-handler guard (dictate pattern)
 	const safetyRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const reconnectsRef = useRef(0);
@@ -539,6 +572,7 @@ export function useDictation({ append, destination = "primary", disabled = false
 		const target = destination ?? { id: "main", append: primary ? questionTarget ?? appendRef.current : (text: string) => appendRef.current(text) };
 		destinationRef.current = target;
 		setDestinationId(target.id);
+		stopSpeaking(); // barge-in: the voice yields the moment he starts talking (fork)
 		recordingOwner = owner;
 		recordingTarget = target.append;
 		setDictationActive(true);
@@ -548,6 +582,7 @@ export function useDictation({ append, destination = "primary", disabled = false
 		reconnectsRef.current = 0;
 		bufferRef.current = []; // fresh run, fresh buffer (round 2)
 		pendingRef.current = []; // fresh run, fresh queue (mitigation A)
+		localRef.current = false;
 		const gen = ++genRef.current;
 		let language: DictationLanguage;
 		try {
@@ -601,7 +636,7 @@ export function useDictation({ append, destination = "primary", disabled = false
 					// queue, capped; the open handler flushes in order.
 					else {
 						pendingRef.current.push(msg.buffer!);
-						if (pendingRef.current.length > 256) pendingRef.current.shift();
+						if (pendingRef.current.length > (localRef.current ? LOCAL_MAX_FRAMES : 256)) pendingRef.current.shift();
 					}
 				}
 			};
@@ -629,6 +664,21 @@ export function useDictation({ append, destination = "primary", disabled = false
 			token = await tokenPromise;
 		} catch (e) {
 			if (gen !== genRef.current) return;
+			if (e instanceof Error && e.message === DICTATION_KEYLESS) {
+				// No Deepgram key: record for the local engine instead (fork).
+				try {
+					await localEngineReady();
+				} catch (unready) {
+					if (gen !== genRef.current) return;
+					setError(unready instanceof Error ? unready.message : "Local dictation is unavailable");
+					cleanup();
+					return;
+				}
+				if (gen !== genRef.current) return;
+				localRef.current = true;
+				setPhase("recording");
+				return;
+			}
 			setError(e instanceof Error ? e.message : "token unavailable");
 			cleanup();
 			return;
@@ -652,6 +702,26 @@ export function useDictation({ append, destination = "primary", disabled = false
 		sourceRef.current = null;
 		workletRef.current?.disconnect();
 		workletRef.current = null;
+
+		if (localRef.current) {
+			// Local engine: the whole recording is transcribed now, then the
+			// run ends through the same single flush as a Deepgram close.
+			const frames = pendingRef.current;
+			pendingRef.current = [];
+			transcribeLocally(frames).then(
+				(text) => {
+					if (gen !== genRef.current) return;
+					if (text) bufferRef.current.push(text);
+					cleanup();
+				},
+				(e: unknown) => {
+					if (gen !== genRef.current) return;
+					setError(e instanceof Error ? e.message : "Local dictation failed");
+					cleanup();
+				},
+			);
+			return;
+		}
 
 		const ws = wsRef.current;
 		if (ws && ws.readyState === WebSocket.OPEN) {

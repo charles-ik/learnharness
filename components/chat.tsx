@@ -43,6 +43,7 @@ import { forwardDockWheel, useDockHeight } from "@/components/dock-height";
 import { createDockMorph } from "@/components/dock-morph";
 import { QueuedSteersBody, type QueuedSteerLine } from "@/components/queued-steers";
 import { DictationBar, finishDictation, joinDictation, useDictation, type Dictation } from "@/components/dictation";
+import { SpeakButton, spokenTextOf, useAutoSpeak } from "@/components/spoken-replies";
 import { useFieldCycle } from "@/components/field-cycle";
 import { useOptionalInteractionLayers } from "./interaction-layers";
 import { isInteractionScopeEligible } from "./plugin-input-focus";
@@ -1309,6 +1310,8 @@ export function Chat({
 	// tab) is now ANNOUNCED on the events channel — the turn-started
 	// subscription (below the jobs poll) attaches to it live. No polling
 	// window can expire; the freeze class is gone.
+	// Spoken replies (fork): a finished turn is read aloud when Voice is on.
+	useAutoSpeak(messages, status);
 	const prevStatusRef = useRef(status);
 	useEffect(() => {
 		const transitioned = prevStatusRef.current !== "ready" && status === "ready";
@@ -1967,6 +1970,7 @@ export function Chat({
 												}
 											})}
 										</MessageContent>
+										{m.role === "assistant" && !(localStream && mi === messages.length - 1) && <SpeakButton id={m.id} text={spokenTextOf(m)} />}
 										{m.role === "assistant" && renderSideEntry(sideEntries.get(m.id)?.get(m.parts.length))}
 									</Message>
 									)}

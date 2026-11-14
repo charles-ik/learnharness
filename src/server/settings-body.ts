@@ -27,8 +27,12 @@ import type {
 	ModelsSettings,
 	ModelSlot,
 	RoleModelOverride,
+	VoiceSettings,
 } from "../core/settings.ts";
-import { BACKGROUND_MODEL_ROLES, CACHE_RETENTIONS, COMPACTION_THRESHOLD_FLOOR, CUSTOM_MODEL_PIN_FLOOR, EXTRACTION_CHUNK_TOKENS_FLOOR, MODEL_SLOTS } from "../core/settings.ts";
+import {
+	BACKGROUND_MODEL_ROLES, CACHE_RETENTIONS, COMPACTION_THRESHOLD_FLOOR, CUSTOM_MODEL_PIN_FLOOR, EXTRACTION_CHUNK_TOKENS_FLOOR, MODEL_SLOTS,
+	roundVoiceSpeed, VOICE_SPEED_MAX, VOICE_SPEED_MIN,
+} from "../core/settings.ts";
 import { WRITABLE_TOOL_KEYS } from "../core/pending.ts";
 import { isSearchEngineId, SEARCH_ENGINES } from "../core/search.ts";
 import { isDictationLanguage } from "../core/dictation.ts";
@@ -448,6 +452,26 @@ export function parseDictationSettingsBody(body: unknown): SettingsBodyResult<Di
 	return { ok: true, settings: { language: raw.language } };
 }
 
+/** voice: { speakReplies?: boolean, speed?: number in VOICE_SPEED_MIN–MAX }.
+ *  Strict like every section: out-of-range speed is a 400; in range rounds
+ *  to one decimal place (the stored form). */
+export function parseVoiceSettingsBody(body: unknown): SettingsBodyResult<Partial<VoiceSettings>> {
+	const raw = asRecord(body);
+	if (!raw) return { ok: false, error: "Invalid JSON body" };
+	const settings: Partial<VoiceSettings> = {};
+	if (raw.speakReplies !== undefined) {
+		if (typeof raw.speakReplies !== "boolean") return { ok: false, error: "speakReplies must be true or false" };
+		settings.speakReplies = raw.speakReplies;
+	}
+	if (raw.speed !== undefined) {
+		if (typeof raw.speed !== "number" || !Number.isFinite(raw.speed) || raw.speed < VOICE_SPEED_MIN || raw.speed > VOICE_SPEED_MAX) {
+			return { ok: false, error: `speed must be a number from ${VOICE_SPEED_MIN} to ${VOICE_SPEED_MAX}` };
+		}
+		settings.speed = roundVoiceSpeed(raw.speed);
+	}
+	return { ok: true, settings };
+}
+
 /** The custom endpoint's per-model pins (PATCH /api/custom-provider): the
  *  whole desired map, replace-whole like every section. Strict write side — a
  *  token count must be a whole number at or above the floor (the read side
@@ -498,6 +522,7 @@ export const SETTINGS_SECTIONS = {
 	compaction: parseCompactionSettingsBody,
 	models: parseModelsSettingsBody,
 	dictation: parseDictationSettingsBody,
+	voice: parseVoiceSettingsBody,
 	claudeCode: parseClaudeCodeSettingsBody,
 } as const;
 

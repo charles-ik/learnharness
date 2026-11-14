@@ -1,3 +1,4 @@
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -10,16 +11,37 @@ export const ROOT = path.dirname(fileURLToPath(import.meta.url));
  * embedding model cache — when set. The desktop shell points it at
  * userData so nothing is written inside the read-only .app bundle
  * (macOS translocation guarantees the bundle is read-only anyway).
- * Unset (plain web dev / repo work) it resolves to the repo's data/,
- * byte-for-byte as before. Read-only assets (prompts) stay ROOT-anchored
+ * Unset (plain web dev / repo work) it resolves to the desktop app's own
+ * data folder (sharedDataRoot, below), or to the repo's data/ under tests.
+ * Read-only assets (prompts) stay ROOT-anchored
  * on purpose: they ship inside the app bundle by design.
  */
 // Mutable runtime paths are not deployment assets. Turbopack analyzes each
 // path-producing call independently, so derived paths need their own opt-out.
 // Keep ROOT/teacherPrompt traceable: read-only shipped assets still belong.
+/** Where the packaged desktop app keeps its data: Electron's userData for the
+ *  app name "LearnHarness", plus data/. Fork (2026-11-13): the web/dev
+ *  version defaults to this same folder, so a machine has ONE set of lessons
+ *  however the app is opened. Don't run both against it at the same time. */
+export function sharedDataRoot(
+	platform: NodeJS.Platform = process.platform,
+	env: Record<string, string | undefined> = process.env,
+	home: string = os.homedir(),
+): string {
+	const join = platform === "win32" ? path.win32.join : path.posix.join;
+	const base =
+		platform === "win32" ? env.APPDATA || join(home, "AppData", "Roaming")
+		: platform === "darwin" ? join(home, "Library", "Application Support")
+		: env.XDG_CONFIG_HOME || join(home, ".config");
+	return join(base, "LearnHarness", "data");
+}
+
+// Tests keep the repo's data/: a test run must never write into real lessons.
 const DATA_ROOT = process.env.LH_DATA_DIR
 	? path.resolve(/* turbopackIgnore: true */ process.env.LH_DATA_DIR)
-	: path.join(/* turbopackIgnore: true */ ROOT, "data");
+	: process.env.NODE_ENV === "test"
+		? path.join(/* turbopackIgnore: true */ ROOT, "data")
+		: sharedDataRoot();
 
 export const PATHS = {
 	root: ROOT,

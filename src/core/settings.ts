@@ -347,6 +347,17 @@ export interface DictationSettings {
 	language?: DictationLanguage;
 }
 
+/** Spoken replies, resolved: every field present. */
+export type VoiceSettings = {
+	/** Read the teacher's replies aloud and have the teacher write for the ear. */
+	speakReplies: boolean;
+	/** Speaking speed multiplier. */
+	speed: number;
+};
+
+export const VOICE_SPEED_MIN = 0.5;
+export const VOICE_SPEED_MAX = 2;
+
 /** Agent settings — everything about the non-conversation machinery. */
 export interface AgentSettings {
 	/** Maximum simultaneous background-worker model requests (default 8).
@@ -494,6 +505,8 @@ export interface UserSettings {
 	version: number;
 	general?: GeneralSettings;
 	dictation?: DictationSettings;
+	/** Stored delta like every section; absent fields resolve to the factory. */
+	voice?: Partial<VoiceSettings>;
 	/** Explicit app-wide opt-in; absent/invalid is off, including older records. */
 	claudeCode?: { enabled?: boolean };
 	agent?: AgentSettings;
@@ -517,6 +530,7 @@ export interface FactorySettings {
 	agent: Required<Pick<AgentSettings, "workerRequestConcurrency">>;
 	general: Required<GeneralSettings>;
 	dictation: Required<DictationSettings>;
+	voice: VoiceSettings;
 	appearance: {
 		theme: string;
 		background: string | null;
@@ -540,6 +554,7 @@ export const FACTORY_SETTINGS: FactorySettings = {
 	agent: { workerRequestConcurrency: 8 },
 	general: { autoUpdate: true },
 	dictation: { language: "en" },
+	voice: { speakReplies: false, speed: 1 },
 	appearance: {
 		theme: "default",
 		background: null, // null = the active theme's background
@@ -565,6 +580,9 @@ const PROSE_FONT_MIN = 12;
 const PROSE_FONT_MAX = 24;
 
 const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max);
+
+/** Speaking speed to its stored form: clamped, one decimal place. */
+export const roundVoiceSpeed = (v: number) => Math.round(clamp(v, VOICE_SPEED_MIN, VOICE_SPEED_MAX) * 10) / 10;
 
 /** #rgb / #rrggbb (case-insensitive) — the only color format we accept. */
 export function isHexColor(value: string): boolean {
@@ -871,6 +889,15 @@ export function sanitizeUserSettings(raw: unknown): UserSettings | null {
 			isDictationLanguage((raw as Record<string, unknown>).language)
 			? { language: (raw as DictationSettings).language }
 			: {};
+	}
+	if (r.voice !== undefined) {
+		const raw = r.voice !== null && typeof r.voice === "object" && !Array.isArray(r.voice)
+			? r.voice as Record<string, unknown> : {};
+		const voice: Partial<VoiceSettings> = {};
+		const speakReplies = boolOrDrop(raw.speakReplies);
+		if (speakReplies !== undefined) voice.speakReplies = speakReplies;
+		if (typeof raw.speed === "number" && Number.isFinite(raw.speed)) voice.speed = roundVoiceSpeed(raw.speed);
+		out.voice = voice;
 	}
 	if (r.claudeCode !== undefined) {
 		const raw = r.claudeCode;

@@ -178,6 +178,31 @@ it("question's visible plain-Tab row/thinking cycle survives native Tab preventi
 	remove();
 });
 
+it("number keys pick a question row outright; Space picks only right after an arrow walk, and is otherwise left for dictation", async () => {
+	const f = fixture();
+	await f.render(<QuestionDock toolName="quiz" toolCallId="q" input={{ question: "Pick", options: [{ label: "Yes", value: "yes" }, { label: "No", value: "no" }], correctAnswer: "yes", explanation: "Yes" }} expanded onExpand={() => {}} onSubmit={() => {}} dictationClaim={false} />);
+	const row = (index: number) => document.querySelector<HTMLElement>(`[data-kbdrow="${index}"]`)!;
+	const second = await f.key(document.body, "2");
+	assert.equal(second.defaultPrevented, true); assert.equal(row(1).getAttribute("aria-checked"), "true");
+	await f.key(document.body, "1");
+	assert.equal(row(0).getAttribute("aria-checked"), "true"); assert.equal(row(1).getAttribute("aria-checked"), "false");
+	// The number after the last option is the quiz's "I don't know".
+	await f.key(document.body, "3");
+	assert.equal(row(2).getAttribute("aria-pressed"), "true"); assert.equal(row(0).getAttribute("aria-checked"), "false");
+	assert.equal((await f.key(document.body, "4")).defaultPrevented, false, "no fourth row");
+	// Space after a number is not a pick: it stays free for the dictation toggle.
+	assert.equal((await f.key(document.body, " ")).defaultPrevented, false);
+	assert.equal(row(2).getAttribute("aria-pressed"), "true");
+	// Space right after an arrow walk is still the walked row's pick.
+	await f.key(document.body, "ArrowUp");
+	assert.equal((await f.key(document.body, " ")).defaultPrevented, true);
+	assert.equal(row(1).getAttribute("aria-checked"), "true");
+	// A number typed into the thinking field is text, not a pick.
+	const thinking = get("thinking-field");
+	Object.defineProperty(thinking, "isContentEditable", { value: true }); // linkedom does not compute it
+	assert.equal((await f.key(thinking, "1")).defaultPrevented, false); assert.equal(row(1).getAttribute("aria-checked"), "true");
+});
+
 it("ReadingThinking intentionally claims Escape even with no callback, without closing its containing modal", async () => {
 	const f = fixture();
 	await f.render(<div data-testid="modal"><ReadingThinkingField value="" revision={0} onChange={() => {}} claim={false} /></div>);

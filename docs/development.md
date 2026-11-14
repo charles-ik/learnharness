@@ -48,7 +48,7 @@ Nonsecret settings are deltas in `<data root>/settings.json`; absent values reso
 
 | Variable | Purpose |
 | --- | --- |
-| `LH_DATA_DIR` | Mutable chats/jobs/graph/settings/prompts; default repo `data/`. |
+| `LH_DATA_DIR` | Mutable chats/jobs/graph/settings/prompts. Default: the desktop app's own data folder (`%APPDATA%\LearnHarness\data`, `~/Library/Application Support/LearnHarness/data`, or `~/.config/LearnHarness/data`), so the web/dev version and the installed app share one set of lessons; do not run both at once. Tests (`NODE_ENV=test`) use repo `data/`. |
 | `LH_AUTH_FILE` | Keys/custom-endpoint binding; default repo-root `auth.json`, outside `data/`. |
 | Provider API-key variables | Optional, selected-provider dependent; UI names are in `src/core/auth-keys.ts`. |
 | `TAVILY_API_KEY`, `BRAVE_API_KEY`, `EXA_API_KEY`, `FIRECRAWL_API_KEY`, `OLLAMA_API_KEY` | Optional search adapters. Without a Settings pin, the first keyed engine wins: Tavily → Brave → Exa → Firecrawl → Ollama. A pinned engine requires its own key; no silent fallback. Ollama search is hosted at ollama.com, not a local model server. Page fetching is independent; research can fetch known URLs without a search key. |

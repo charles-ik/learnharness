@@ -27,11 +27,21 @@ Sessions are saved locally, including earlier messages when context is compacted
 
 ## Dictation
 
+Dictation works with no key. Use the microphone or **Mod+D** to start and stop; without a Deepgram key the recording is transcribed on this machine when you stop (NVIDIA Parakeet TDT v3 on the CPU, 25 European languages detected automatically). The first use downloads the speech model once (about 670 MB) into `<learning data>/models/`; the button shows the progress, and you start dictating again when it finishes. The audio is not sent anywhere. Recordings longer than ten minutes keep only the last ten.
+
+Adding a Deepgram key switches dictation to Deepgram's hosted service:
+
 1. Create a [Deepgram API key](https://console.deepgram.com/) with the **Member role or higher**, required for [short-lived token minting](https://developers.deepgram.com/reference/auth/tokens/grant).
 2. Add it under **Settings → Providers → Dictation** and choose the language below the key. **Multilingual** supports automatic recognition and mixed-language speech.
 3. Use the microphone or **Mod+D** to start and stop. Review the text before sending. **Esc cancellation discards the pending transcript**; stop normally to keep it.
 
 Audio streams from your browser directly to Deepgram using a short-lived token. A `403 Insufficient permissions` error while obtaining that token can mean the key's role is insufficient.
+
+## Spoken replies
+
+Every teacher message has a speaker button that reads it aloud; press it again to stop. Turn on **Speak replies aloud** in Settings to have each finished reply read automatically, and set **Speaking speed** there. Starting dictation or sending a message silences the voice.
+
+The voice is Kokoro, run on this machine's CPU. The first use downloads it once (about 380 MB) into `<learning data>/models/`; the button's tooltip shows the progress. Only the prose is spoken: code, diagrams, tables, displayed formulas and question cards stay on screen. Replies are read after they finish, not while they stream.
 
 ## Use local files in a session
 

@@ -8,7 +8,7 @@ in-app cheat sheet. See [Getting started](getting-started.md) for setup.
 
 | Action | Binding |
 |---|---|
-| Toggle dictation | Mod+D |
+| Toggle dictation | Mod+D, or Space outside a text field |
 | Open settings | Mod+, |
 | Model selector | Mod+K |
 | Cycle thinking level | Shift+Tab |
@@ -89,7 +89,9 @@ While a select question is expanded and active:
 
 - **↑/↓** walk answer rows: options first, then **I don't know** (quiz) or
   **Other…** (ask). The walk stops at either end; it does not wrap.
-- **Space** acts like clicking the walked row: toggles a multi-select option or
+- **1** to **9** pick a row outright: 1 is the first option, and the number after
+  the last option is the quiz's I don't know or the ask's Other.
+- **Space** right after an arrow walk acts like clicking the walked row: toggles a multi-select option or
   picks a single-select option. Selecting Other focuses its input; Space on an
   already selected Other row deselects it without erasing its text.
 - **←/→** adjust quiz confidence through its stops, except on **I don't know**.

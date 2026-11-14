@@ -44,6 +44,7 @@ import {
 	type ModelSlotName,
 	type RoleModelOverride,
 	type UserSettings,
+	type VoiceSettings,
 } from "./settings.ts";
 
 /** A configured model slot: the tier's concrete model, with its optional
@@ -74,6 +75,7 @@ export type EffectiveAppearance = FactorySettings["appearance"];
 export interface EffectiveSettings {
 	general: Required<GeneralSettings>;
 	dictation: Required<DictationSettings>;
+	voice: VoiceSettings;
 	agent: {
 		workerRequestConcurrency: number;
 		models: Record<BackgroundModelRole, EffectiveModelSpec | undefined>;
@@ -200,6 +202,10 @@ export function resolveSettings(record: UserSettings | null): EffectiveSettings 
 		},
 		dictation: {
 			language: record?.dictation?.language ?? FACTORY_SETTINGS.dictation.language,
+		},
+		voice: {
+			speakReplies: record?.voice?.speakReplies ?? FACTORY_SETTINGS.voice.speakReplies,
+			speed: record?.voice?.speed ?? FACTORY_SETTINGS.voice.speed,
 		},
 		agent: {
 			workerRequestConcurrency: agent.workerRequestConcurrency ?? FACTORY_SETTINGS.agent.workerRequestConcurrency,
